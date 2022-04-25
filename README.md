@@ -36,3 +36,19 @@ To attach the *c3 reorder*
    ipa-free-fnsummary2                                 :  ON
 ...
 ```
+
+## How to build gcc using plugin
+
+```bash
+> mkdir gcc-trained-build
+> mkdir gcc-trained-install
+> cd gcc-trained-build/
+> <gcc_sources_path>/configure --with-build-config=bootstrap-lto-lean --disable-multilib --prefix=<gcc-trained-install-path> --enable-languages=c,c++
+> make BOOT_CFLAGS='-O2 -Wno-error=coverage-mismatch' -j8 profiledbootstrap
+> make  all-stagetrain-gcc
+> make -j8 all-stagefeedback-gcc
+> sudo make -j8 BOOT_CFLAGS='-O2 -Wno-error=coverage-mismatch -freorder-functions -fplugin=<path_to_plugin_so>/c3-ipa.so' all-stagefeedback-gcc
+> make install
+```
+
+Now it's able to use gcc trained using plugin compiler.
