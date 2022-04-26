@@ -39,6 +39,8 @@ To attach the *c3 reorder*
 
 ## How to build gcc using plugin
 
+**|!| You have to patch your gcc using 0001-New-ipa-reorder.patch**
+
 ```bash
 > mkdir gcc-trained-build
 > mkdir gcc-trained-install
