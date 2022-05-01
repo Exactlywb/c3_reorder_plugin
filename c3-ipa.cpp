@@ -185,16 +185,16 @@ namespace {
         {
             for (unsigned i = 0; i < clusters.length (); i++)
     	    {
-    	    cluster *c = clusters[i];
-    	    if (c->m_functions.length () <= 1)
-    	        continue;
+    	        cluster *c = clusters[i];
+    	        if (c->m_functions.length () <= 1)
+    	            continue;
 
-    	    fprintf (dump_file, "Cluster %d with functions: %d, size: %d,"
-    		        " density: %f\n", i, c->m_functions.length (), c->m_size,
-    		        (c->m_time / c->m_size).to_double ());
-    	    fprintf (dump_file, "  functions: ");
-    	    for (unsigned j = 0; j < c->m_functions.length (); j++)
-    	        fprintf (dump_file, "%s ", c->m_functions[j]->dump_name ());
+    	        fprintf (dump_file, "Cluster %d with functions: %d, size: %d,"
+    		            " density: %f\n", i, c->m_functions.length (), c->m_size,
+    		            (c->m_time / c->m_size).to_double ());
+    	        fprintf (dump_file, "  functions: ");
+    	        for (unsigned j = 0; j < c->m_functions.length (); j++)
+    	            fprintf (dump_file, "%s ", c->m_functions[j]->dump_name ());
     	        fprintf (dump_file, "\n");
     	    }
             fprintf (dump_file, "\n");
@@ -275,8 +275,14 @@ namespace {
 }
 
 int plugin_init (struct plugin_name_args *plugin_info,
-		struct plugin_gcc_version *version)
+	        	 struct plugin_gcc_version *version)
 {
+
+    if (!plugin_default_version_check (version, &gcc_version))
+    {
+        std::cerr << "Bad gcc version to compile the plugin" << std::endl;
+        return 0;
+    }
 
     register_callback(plugin_info->base_name, PLUGIN_INFO, NULL, 
                       &C3_plugin_info);
