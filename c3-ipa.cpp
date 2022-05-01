@@ -1,3 +1,9 @@
+/*
+ * This plugin is a truncated version of Martin Liska's c3-pass
+ * The original sources you may see on
+ * https://gcc.gnu.org/legacy-ml/gcc-patches/2019-09/msg01142.html
+ * */
+
 #include <iostream>
 
 // This is the first gcc header to be included

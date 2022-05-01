@@ -3,6 +3,10 @@ From: ExactlyWb <frolov.da@phystech.edu>
 Date: Mon, 25 Apr 2022 20:03:06 +0300
 Subject: [PATCH] New ipa reorder
 
+# This patch is truncated version of Martin Liska's patch.
+# The original sources you may see on
+# https://gcc.gnu.org/legacy-ml/gcc-patches/2019-09/msg01142.html 
+
 ---
  gcc/cgraph.c            |  2 ++
  gcc/cgraph.h            |  2 ++
