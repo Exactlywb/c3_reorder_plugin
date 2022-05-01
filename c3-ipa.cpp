@@ -1,3 +1,7 @@
+/**
+ * @file c3-ipa.cpp
+ */
+
 /*
  * This plugin is a truncated version of Martin Liska's c3-pass
  * The original sources you may see on
@@ -27,7 +31,7 @@
 #include "fibonacci_heap.h"
 #include <limits>
 
-int plugin_is_GPL_compatible;
+int plugin_is_GPL_compatible; ///<To prove our dedication to free software
 
 static struct plugin_info C3_plugin_info = {"1.0", "C3 gcc plugin"};
 
@@ -36,7 +40,7 @@ namespace {
     #define C3_CLUSTER_THRESHOLD 1024
 
     struct cluster_edge;
-
+    
     struct cluster
     {
         cluster (cgraph_node *node, int size, sreal time):
@@ -82,6 +86,10 @@ namespace {
         return (r < 0) ? -1 : ((r > 0) ? 1 : 0);
     }
 
+    /**
+     * @brief c3 reorder itself
+     * @return error code
+     */
     static unsigned int c3_reorder ()
     {
         cgraph_node *node;
@@ -240,6 +248,7 @@ namespace {
         return 0;
     }
 
+    ///passage info
     const pass_data pass_data_ipa_reorder =
     {
         IPA_PASS, /* type */
@@ -253,6 +262,9 @@ namespace {
         0, /* todo_flags_finish */
     };
 
+    /**
+     * @brief the executable passage
+     */
     struct c3_pass: public ipa_opt_pass_d
     {
         c3_pass (gcc::context *ctxt):
@@ -268,7 +280,15 @@ namespace {
                             NULL  /* variable_transform */)
         {}
 
+        /**
+         * @brief The execute method
+         * @warning do not call it by yourself
+         */
         virtual unsigned int execute (function *) { return c3_reorder (); }
+        /**
+         * @brief This function is responsible for when the passage
+         * should work and when not
+         */
         virtual bool gate (function *);
 
     };
@@ -280,6 +300,12 @@ namespace {
 
 }
 
+/**
+ * @brief The main plugin function hooking the desired passage
+ * @param[in] plugin_info Plugin invocation information
+ * @param[in] version GCC version
+ * @return error code
+ */
 int plugin_init (struct plugin_name_args *plugin_info,
 	        	 struct plugin_gcc_version *version)
 {
@@ -287,7 +313,7 @@ int plugin_init (struct plugin_name_args *plugin_info,
     if (!plugin_default_version_check (version, &gcc_version))
     {
         std::cerr << "Bad gcc version to compile the plugin" << std::endl;
-        return 0;
+        return 1;
     }
 
     register_callback(plugin_info->base_name, PLUGIN_INFO, NULL, 
@@ -305,3 +331,4 @@ int plugin_init (struct plugin_name_args *plugin_info,
 
     return 0;
 }
+
