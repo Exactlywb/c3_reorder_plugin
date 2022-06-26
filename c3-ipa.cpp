@@ -29,7 +29,6 @@
 #include "ipa-prop.h"
 #include "ipa-fnsummary.h"
 #include "fibonacci_heap.h"
-#include <limits>
 
 int plugin_is_GPL_compatible; ///<To prove our dedication to free software
 
@@ -37,53 +36,12 @@ static struct plugin_info C3_plugin_info = {"1.0", "C3 gcc plugin"};
 
 namespace {
 
-    #define C3_CLUSTER_THRESHOLD 1024
 
-    struct cluster_edge;
-    
-    struct cluster
+    static int func_cmp (const void *a_p, const void *b_p)
     {
-        cluster (cgraph_node *node, int size, sreal time):
-            m_functions (), m_callers (), m_size (size), m_time (time)
-        {
-            m_functions.safe_push (node);
-        }
-
-        vec<cgraph_node *> m_functions;
-        hash_map <cluster *, cluster_edge *> m_callers;
-        int m_size;
-        sreal m_time;
-    };
-
-    struct cluster_edge
-    {
-        cluster_edge (cluster *caller, cluster *callee, uint32_t count):
-            m_caller (caller), m_callee (callee), m_count (count), 
-            m_heap_node (NULL) {}
-
-        uint32_t inverted_count ()
-        {
-            return std::numeric_limits<uint32_t>::max () - m_count;
-        }
-
-        cluster *m_caller;
-        cluster *m_callee;
-        uint32_t m_count;
-        fibonacci_node<uint32_t, cluster_edge> *m_heap_node;
-    };
-
-    static int cluster_cmp (const void *a_p, const void *b_p)
-    {
-        const cluster *a = *(cluster * const *)a_p;
-        const cluster *b = *(cluster * const *)b_p;
-
-        unsigned fncounta = a->m_functions.length ();
-        unsigned fncountb = b->m_functions.length ();
-        if (fncounta <= 1 || fncountb <= 1)
-            return fncountb - fncounta;
-
-        sreal r = b->m_time * a->m_size - a->m_time * b->m_size;
-        return (r < 0) ? -1 : ((r > 0) ? 1 : 0);
+        cgraph_node *a = (cgraph_node *)a_p;
+        cgraph_node *b = (cgraph_node *)b_p;
+        return strcmp(a->name(), b->name());
     }
 
     /**
@@ -92,158 +50,34 @@ namespace {
      */
     static unsigned int c3_reorder ()
     {
+        FILE * fp;
+        fp = fopen ("/home/exactlywb/Desktop/ISP_RAS/c3_reorder_plugin/PASS_WORK.txt", "w+"); //PLEASE, CHANGE IT
         cgraph_node *node;
-        auto_vec<cluster *> clusters;
+        //auto_vec<cgraph_node *> functions;
 
+        fprintf(fp, "Start c3_ipa plugin\n");
         /* Create a cluster for each function.  */
-        FOR_EACH_DEFINED_FUNCTION (node)
-        if (!node->alias && !node->global.inlined_to)
-        {
-            ipa_fn_summary *summary = ipa_fn_summaries->get (node);
-            cluster *c = new cluster (node, summary->size, summary->time);
-            node->aux = c;
-            clusters.safe_push (c);
+        int c = 1;
+        FOR_EACH_DEFINED_FUNCTION (node) {
+          if(node == nullptr) continue;
+          if (!node->alias && !node->global.inlined_to)
+          {
+              node->text_sorted_order = c++;
+              fprintf(fp, "func: %s\n", node->name());
+              //functions.safe_push (node);
+          }
         }
 
-        auto_vec<cluster_edge *> edges;
-
-        /* Insert edges between clusters that have a profile.  */
-        for (unsigned i = 0; i < clusters.length (); i++)
-        {
-            cgraph_node *node = clusters[i]->m_functions[0];
-            for (cgraph_edge *cs = node->callers; cs; cs = cs->next_caller)
-            {
-                if (cs->count.reliable_p ()
-                    && cs->count.to_gcov_type () > 0)
-                {
-                    cluster *caller = (cluster *)cs->caller->aux;
-                    cluster *callee = (cluster *)cs->callee->aux;
-                    gcov_type count = cs->count.to_gcov_type ();
-
-                    cluster_edge **cedge = callee->m_callers.get (caller);
-                    if (cedge != NULL)
-                        (*cedge)->m_count += count;
-                    else
-                    {
-                        cluster_edge *cedge = new cluster_edge (caller, callee, 
-                                                                count);
-                        edges.safe_push (cedge);
-                        callee->m_callers.put (caller, cedge);
-                    }
-                }
-            }
-        }
-
-        /* Now insert all created edges into a heap.  */
-        fibonacci_heap <uint32_t, cluster_edge> heap (0);
-
-        for (unsigned i = 0; i < clusters.length (); i++)
-        {
-            cluster *c = clusters[i];
-            for (hash_map<cluster *, cluster_edge *>::iterator it = 
-                 c->m_callers.begin (); it != c->m_callers.end (); ++it)
-            {
-                cluster_edge *cedge = (*it).second;
-                cedge->m_heap_node = heap.insert (cedge->inverted_count (), 
-                                                  cedge);
-            }
-        }
-
-        while (!heap.empty ())
-        {
-            cluster_edge *cedge = heap.extract_min ();
-            cluster *caller = cedge->m_caller;
-            cluster *callee = cedge->m_callee;
-            cedge->m_heap_node = NULL;
-
-            if (caller == callee)
-    	        continue;
-            if (caller->m_size + callee->m_size <= C3_CLUSTER_THRESHOLD)
-    	    {
-                caller->m_size += callee->m_size;
-                caller->m_time += callee->m_time;
-
-                /* Append all cgraph_nodes from callee to caller.  */
-                for (unsigned i = 0; i < callee->m_functions.length (); i++)
-                    caller->m_functions.safe_push (callee->m_functions[i]);
-
-                callee->m_functions.truncate (0);
-
-                /* Iterate all cluster_edges of callee and add them to 
-                the caller. */
-                for (hash_map<cluster *, cluster_edge *>::iterator it = 
-                    callee->m_callers.begin (); it != callee->m_callers.end ();
-                    ++it)
-                {
-                    (*it).second->m_callee = caller;
-                    cluster_edge **ce = caller->m_callers.get ((*it).first);
-
-                    if (ce != NULL)
-                    {
-                        (*ce)->m_count += (*it).second->m_count;
-                        if ((*ce)->m_heap_node != NULL)
-                            heap.decrease_key  ((*ce)->m_heap_node, 
-                                                (*ce)->inverted_count ());
-                    }
-                    else
-                        caller->m_callers.put ((*it).first, (*it).second);
-                }
-            }
-        }
-
+#if 0
         /* Sort the candidate clusters.  */
-        clusters.qsort (cluster_cmp);
-
-        /* Dump clusters.  */
-        if (dump_file)
-        {
-            for (unsigned i = 0; i < clusters.length (); i++)
-    	    {
-    	        cluster *c = clusters[i];
-    	        if (c->m_functions.length () <= 1)
-    	            continue;
-
-    	        fprintf (dump_file, "Cluster %d with functions: %d, size: %d,"
-    		            " density: %f\n", i, c->m_functions.length (), c->m_size,
-    		            (c->m_time / c->m_size).to_double ());
-    	        fprintf (dump_file, "  functions: ");
-    	        for (unsigned j = 0; j < c->m_functions.length (); j++)
-    	            fprintf (dump_file, "%s ", c->m_functions[j]->dump_name ());
-    	        fprintf (dump_file, "\n");
-    	    }
-            fprintf (dump_file, "\n");
+        functions.qsort (func_cmp);
+        for (int i = 0; i < functions.length(); i++) {
+          functions[i]->text_sorted_order = i;
+          fprintf(fp, "[%d] %s\n", i, functions[i]->name());
         }
+#endif
 
-        /* Assign .text.sorted.* section names.  */
-        int counter = 1;
-        for (unsigned i = 0; i < clusters.length (); i++)
-        {
-            cluster *c = clusters[i];
-            if (c->m_functions.length () <= 1)
-    	        continue;
-
-            for (unsigned j = 0; j < c->m_functions.length (); j++)
-    	    {
-    	        cgraph_node *node = c->m_functions[j];
-
-    	        if (dump_file)
-    	            fprintf (dump_file, "setting: %d for %s with size:%d\n",
-    		            counter, node->dump_asm_name (),
-    		            ipa_fn_summaries->get (node)->size);
-    	        // node->text_sorted_order = counter++;
-    	    }
-        }
-
-        /* Release memory.  */
-        FOR_EACH_DEFINED_FUNCTION (node)
-        if (!node->alias)
-            node->aux = NULL;
-
-        for (unsigned i = 0; i < clusters.length (); i++)
-            delete clusters[i];
-
-        for (unsigned i = 0; i < edges.length (); i++)
-            delete edges[i];
+        fclose(fp);
 
         return 0;
     }
@@ -295,7 +129,8 @@ namespace {
 
     bool c3_pass::gate (function *)
     {
-        return flag_profile_reorder_functions && flag_profile_use && flag_wpa;
+        //return flag_profile_reorder_functions && flag_profile_use && flag_wpa;
+        return flag_reorder_functions && flag_wpa;
     }
 
 }
