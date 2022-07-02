@@ -6,9 +6,9 @@ CXXFLAGS+= -I$(GCCPLUGINS_DIR)/include -fPIC -fno-rtti -O2
 
 .PHONY: all clean
 
-all: c3-ipa.so
+all: c3_reorder.so
 
-c3-ipa.so: $(PLUGIN_SOURCE_FILE)
+c3_reorder.so: $(PLUGIN_SOURCE_FILE)
 	$(HOST_GCC) -shared $(CXXFLAGS) $^ -o $@
 
 clean:
