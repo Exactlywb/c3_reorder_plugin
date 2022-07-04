@@ -31,7 +31,8 @@
 #include "fibonacci_heap.h"
 
 #include <fstream>
-#include "perf_parser.hpp"
+#include "include/perf_parser.hpp"
+#include "include/funcData.hpp"
 
 int plugin_is_GPL_compatible; ///<To prove our dedication to free software
 
@@ -66,8 +67,8 @@ namespace {
 
         perfParser::lbrSampleReParse (lbrParse, lbrSamplesPreRecord);
 
-        for (auto el: lbrParse)
-            std::cerr << "\"" << el.callerName_ << "\" (0x" << std::hex << el.callerOffset_ << ") -> \"" << el.calleeName_ << "\"" << std::endl; 
+        // for (auto el: lbrParse)
+            // std::cerr << "\"" << el.callerName_ << "\" (0x" << std::hex << el.callerOffset_ << ") -> \"" << el.calleeName_ << "\"" << std::endl; 
 
     }
 
