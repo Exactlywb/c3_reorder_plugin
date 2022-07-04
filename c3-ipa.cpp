@@ -47,15 +47,27 @@ namespace {
         return strcmp(a->name(), b->name());
     }
 
-    void parse_lbr_perf_data (const char* perf_script_path) {
+    void parse_lbr_perf_data (std::vector<perfParser::LbrSample> lbrParse, const char* perf_script_path) {
 
         perfParser::TraceStream traceReader (perf_script_path);
+        std::vector<std::pair<std::string, std::string>> lbrSamplesPreRecord;
 
         while (!traceReader.isAtEOF ()) {
 
-            ISP::StringWrapper curStr = traceReader.getCurrentLine ();
+            while (!traceReader.getCurrentLine ().size ())
+                traceReader.advance ();
+
+            std::string curStr = boost::trim_copy (traceReader.getCurrentLine ());
+            perfParser::lbrPreParse (lbrSamplesPreRecord, curStr);
+
+            traceReader.advance ();
 
         }
+
+        perfParser::lbrSampleReParse (lbrParse, lbrSamplesPreRecord);
+
+        for (auto el: lbrParse)
+            std::cerr << "\"" << el.callerName_ << "\" (0x" << std::hex << el.callerOffset_ << ") -> \"" << el.calleeName_ << "\"" << std::endl; 
 
     }
 
@@ -75,9 +87,11 @@ namespace {
         switch (type) {
             case perfParser::PerfContent::Unknown:
                 throw std::runtime_error ("Unknown perf script file format");
-            case perfParser::PerfContent::LBR:
-                parse_lbr_perf_data (perf_script_path);
+            case perfParser::PerfContent::LBR: {
+                std::vector<perfParser::LbrSample> lbrParse;
+                parse_lbr_perf_data (lbrParse, perf_script_path);
                 break;
+            }
             case perfParser::PerfContent::LBRStack:
                 parse_hybrid_perf_data (perf_script_path);
                 break;
