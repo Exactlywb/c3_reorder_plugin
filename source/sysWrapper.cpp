@@ -1,35 +1,34 @@
 #include "../include/sysWrapper.hpp"
 
-std::string exec (const char* cmd) {
+std::string exec (const char *cmd)
+{
     char buffer[128];
 
     std::string result = "";
 
-    FILE* pipe = popen (cmd, "r");
+    FILE *pipe = popen (cmd, "r");
 
-    if (!pipe) throw std::runtime_error("popen() failed!");
+    if (!pipe)
+        throw std::runtime_error ("popen() failed!");
 
     try {
-
-        while (fgets(buffer, sizeof buffer, pipe) != NULL)
+        while (fgets (buffer, sizeof buffer, pipe) != NULL)
             result += buffer;
+    }
+    catch (...) {  // so sorry...
 
-    } catch (...) { //so sorry...
-
-        pclose(pipe);
+        pclose (pipe);
         throw;
-
     }
 
-    pclose(pipe);
+    pclose (pipe);
     return result;
 }
 
-std::string cpp_filt (const char* asmName) {
-
-    std::string cppCommand = std::string ("c++filt ") 
-                            + std::string (asmName);
+std::string cpp_filt (const char *asmName)
+{
+    std::string cppCommand =
+        std::string ("c++filt ") + std::string (asmName);
 
     return exec (cppCommand.c_str ());
-
 }

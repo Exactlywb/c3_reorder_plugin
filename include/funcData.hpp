@@ -1,61 +1,64 @@
 #ifndef FUNC_DATA_HPP__
 #define FUNC_DATA_HPP__
 
-#include <vector>
-#include <string>
 #include <iostream>
-#include <unordered_map>
 #include <set>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 #include "perf_parser.hpp"
 
 namespace HFData {
 
-class FuncInfo final {
+    class FuncInfo final {
+        using callInfo = std::pair<std::size_t, std::uint64_t>;
+        using calls = std::vector<callInfo>;  //! TODO change it
+        std::unordered_map<FuncInfo *, calls>
+            callees_;  // our + 0xoffset -> another
+                       // (std::size_t is occurance)
 
-    using callInfo  = std::pair<std::size_t, std::uint64_t>;
-    using calls     = std::vector<callInfo>; //!TODO change it
-    std::unordered_map<FuncInfo*, calls> callees_;  // our + 0xoffset -> another
-                                                    // (std::size_t is occurance)
+        std::string funcName_;
 
-    std::string funcName_;
+        int funcSize_ = -1;  //! TODO
 
-    int funcSize_ = -1; //!TODO
+    public:
+        FuncInfo (const std::string &funcName) : funcName_ (funcName)
+        {
+        }
 
-public:
+        void addCall (FuncInfo *callee, const std::uint64_t offset);
 
-    FuncInfo (const std::string& funcName): funcName_ (funcName) {}
+        std::string getFuncName () const { return funcName_; }
 
-    void addCall (FuncInfo* callee, const std::uint64_t offset);
+        void setFuncSize (const int funcSize)
+        {
+            funcSize_ = funcSize;
+        }
+        int getFuncSize () const { return funcSize_; }
+    };
 
-    std::string getFuncName () const { return funcName_; }
+    class FuncInfoTbl final {
+        std::unordered_map<std::string, FuncInfo *> tbl_;
 
-    void setFuncSize (const int funcSize) { funcSize_ = funcSize; }
-    int getFuncSize () const { return funcSize_; }
+    public:
+        FuncInfoTbl (
+            const std::vector<perfParser::LbrSample> &samples);
 
-};
+        using tblIt = std::unordered_map<std::string,
+                                         FuncInfo *>::const_iterator;
 
-class FuncInfoTbl final {
+        tblIt lookup (const std::string &str) const
+        {
+            return tbl_.find (str);
+        }
 
-    std::unordered_map<std::string, FuncInfo*> tbl_;
+        tblIt begin () const { return tbl_.begin (); }
+        tblIt end () const { return tbl_.end (); }
 
-public:
-    FuncInfoTbl (const std::vector<perfParser::LbrSample>& samples);
+        std::size_t size () const { return tbl_.size (); }
+    };
 
-    using tblIt = std::unordered_map<std::string, FuncInfo*>::const_iterator;
-
-    tblIt lookup (const std::string& str) const 
-    {
-        return tbl_.find (str);
-    }
-
-    tblIt begin () const { return tbl_.begin (); }
-    tblIt end () const { return tbl_.end (); }
-
-    std::size_t size () const { return tbl_.size (); }
-
-};
-
-}
+}  // namespace HFData
 
 #endif

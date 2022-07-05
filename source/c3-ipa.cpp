@@ -11,107 +11,108 @@
 #include <iostream>
 
 // This is the first gcc header to be included
-#include "gcc-plugin.h"
-#include "plugin-version.h"
-
-#include "tree-pass.h"
-#include "context.h"
-
-#include "config.h"
-#include "system.h"
-#include "coretypes.h"
-#include "tm.h"
-#include "tree.h"
-#include "cgraph.h"
-#include "symbol-summary.h"
-#include "tree-vrp.h"
-#include "alloc-pool.h"
-#include "ipa-prop.h"
-#include "ipa-fnsummary.h"
-#include "fibonacci_heap.h"
-
 #include <fstream>
-#include "../include/perf_parser.hpp"
-#include "../include/funcData.hpp"
 
-int plugin_is_GPL_compatible; ///<To prove our dedication to free software
+#include "../include/funcData.hpp"
+#include "../include/perf_parser.hpp"
+#include "alloc-pool.h"
+#include "cgraph.h"
+#include "config.h"
+#include "context.h"
+#include "coretypes.h"
+#include "fibonacci_heap.h"
+#include "gcc-plugin.h"
+#include "ipa-fnsummary.h"
+#include "ipa-prop.h"
+#include "plugin-version.h"
+#include "symbol-summary.h"
+#include "system.h"
+#include "tm.h"
+#include "tree-pass.h"
+#include "tree-vrp.h"
+#include "tree.h"
+
+int plugin_is_GPL_compatible;  ///< To prove our dedication to free
+                               ///< software
 
 static struct plugin_info C3_plugin_info = {"1.0", "c3_reorder"};
 
 namespace {
 
-
     static int func_cmp (const void *a_p, const void *b_p)
     {
         cgraph_node *a = *(cgraph_node **)a_p;
         cgraph_node *b = *(cgraph_node **)b_p;
-        return strcmp(a->name(), b->name());
+        return strcmp (a->name (), b->name ());
     }
 
-    void parse_lbr_perf_data (std::vector<perfParser::LbrSample>& lbrParse, const char* perf_script_path) {
-
+    void parse_lbr_perf_data (
+        std::vector<perfParser::LbrSample> &lbrParse,
+        const char *perf_script_path)
+    {
         perfParser::TraceStream traceReader (perf_script_path);
-        std::vector<std::pair<std::string, std::string>> lbrSamplesPreRecord;
+        std::vector<std::pair<std::string, std::string>>
+            lbrSamplesPreRecord;
 
         while (!traceReader.isAtEOF ()) {
-
             while (!traceReader.getCurrentLine ().size ())
                 traceReader.advance ();
 
-            std::string curStr = boost::trim_copy (traceReader.getCurrentLine ());
+            std::string curStr =
+                boost::trim_copy (traceReader.getCurrentLine ());
             perfParser::lbrPreParse (lbrSamplesPreRecord, curStr);
 
             traceReader.advance ();
-
         }
 
         perfParser::lbrSampleReParse (lbrParse, lbrSamplesPreRecord);
         // for (auto el: lbrParse)
-            // std::cerr << "\"" << el.callerName_ << "\" (0x" << std::hex << el.callerOffset_ << ") -> \"" << el.calleeName_ << "\"" << std::endl; 
-
+        // std::cerr << "\"" << el.callerName_ << "\" (0x" << std::hex
+        // << el.callerOffset_
+        // << ") -> \"" << el.calleeName_ << "\"" << std::endl;
     }
 
-    void parse_hybrid_perf_data (const char* perf_script_path) {
-
-        //!TODO
-
-    }
-
-
-namespace {
-
-    void CmpOccur (const auto_vec<cgraph_node*>& gccFunctions, const HFData::FuncInfoTbl perfTbl)
+    void parse_hybrid_perf_data (const char *perf_script_path)
     {
+        //! TODO
+    }
 
-        int match = 0;
+    namespace {
 
-        for (auto el: gccFunctions) {
-            
-            std::cerr << el->asm_name () << " -> " << cpp_filt (el->asm_name ()) << std::endl;
-            auto it = perfTbl.lookup (cpp_filt (el->asm_name ()));
-            if (it != perfTbl.end ())
-                match++;
+        void CmpOccur (const auto_vec<cgraph_node *> &gccFunctions,
+                       const HFData::FuncInfoTbl perfTbl)
+        {
+            int match = 0;
 
+            for (auto el : gccFunctions) {
+                std::cerr << el->asm_name () << " -> "
+                          << cpp_filt (el->asm_name ()) << std::endl;
+                auto it = perfTbl.lookup (cpp_filt (el->asm_name ()));
+                if (it != perfTbl.end ())
+                    match++;
+            }
+
+            std::cerr << "Match = " << match << std::endl;
+            std::cerr << "Match percent = "
+                      << 100 * (1.0 * match / perfTbl.size ()) << "%"
+                      << std::endl;
         }
 
-        std::cerr << "Match = " << match << std::endl;
-        std::cerr << "Match percent = " << 100 * (1.0 * match / perfTbl.size ()) << "%" << std::endl;
-
-    }
-
-}
+    }  // namespace
 
     /**
      * @brief c3 reorder itself
      * @return error code
      */
-    static unsigned int c3_reorder (const char* perf_script_path) {
-
-        perfParser::PerfContent type =  perfParser::checkPerfScriptType (perf_script_path);
+    static unsigned int c3_reorder (const char *perf_script_path)
+    {
+        perfParser::PerfContent type =
+            perfParser::checkPerfScriptType (perf_script_path);
         std::vector<perfParser::LbrSample> lbrParse;
         switch (type) {
             case perfParser::PerfContent::Unknown:
-                throw std::runtime_error ("Unknown perf script file format");
+                throw std::runtime_error (
+                    "Unknown perf script file format");
             case perfParser::PerfContent::LBR: {
                 parse_lbr_perf_data (lbrParse, perf_script_path);
                 break;
@@ -125,27 +126,26 @@ namespace {
         HFData::FuncInfoTbl perfFuncTbl (lbrParse);
 
         cgraph_node *node;
-        auto_vec<cgraph_node*> gccFunctions;
-        FOR_EACH_DEFINED_FUNCTION (node) {
-
+        auto_vec<cgraph_node *> gccFunctions;
+        FOR_EACH_DEFINED_FUNCTION (node)
+        {
             if (node == nullptr)
                 continue;
-            
+
             if (!node->alias && !node->global.inlined_to)
                 gccFunctions.safe_push (node);
-
         }
 
         CmpOccur (gccFunctions, perfFuncTbl);
 
         return 0;
-
     }
     // static unsigned int c3_reorder (const char* perf_script_path)
     // {
     //     FILE * fp;
-    //     fp = fopen ("/home/exactlywb/Desktop/ISP_RAS/c3_reorder_plugin/PASS_WORK.txt", "a+"); //PLEASE, CHANGE IT
-    //     cgraph_node *node;
+    //     fp = fopen
+    //     ("/home/exactlywb/Desktop/ISP_RAS/c3_reorder_plugin/PASS_WORK.txt",
+    //     "a+"); //PLEASE, CHANGE IT cgraph_node *node;
     //     auto_vec<cgraph_node *> functions;
 
     //     fprintf(fp, "Start c3_ipa plugin\n");
@@ -171,44 +171,48 @@ namespace {
     //     return 0;
     // }
 
-    ///passage info
-    const pass_data pass_data_ipa_reorder =
-    {
-        IPA_PASS, /* type */
-        "c3_reorder", /* name */
+    /// passage info
+    const pass_data pass_data_ipa_reorder = {
+        IPA_PASS,      /* type */
+        "c3_reorder",  /* name */
         OPTGROUP_NONE, /* optinfo_flags */
-        TV_NONE, /* tv_id */
-        0, /* properties_required */
-        0, /* properties_provided */
-        0, /* properties_destroyed */
-        0, /* todo_flags_start */
-        0, /* todo_flags_finish */
+        TV_NONE,       /* tv_id */
+        0,             /* properties_required */
+        0,             /* properties_provided */
+        0,             /* properties_destroyed */
+        0,             /* todo_flags_start */
+        0,             /* todo_flags_finish */
     };
 
     /**
      * @brief the executable passage
      */
-    struct c3_pass: public ipa_opt_pass_d
-    {
-        c3_pass (gcc::context *ctxt, const char* perf_path):
-            ipa_opt_pass_d (pass_data_ipa_reorder, ctxt,
-            		        NULL, /* generate_summary */
- 		                    NULL, /* write_summary */
-                            NULL, /* read_summary */
-                            NULL, /* write_optimization_summary */
-                            NULL, /* read_optimization_summary */
-                            NULL, /* stmt_fixup */
-                            0, /* function_transform_todo_flags_start */
-                            NULL, /* function_transform */
-                            NULL  /* variable_transform */),
-            perf_script_path (perf_path)
-        {}
+    struct c3_pass : public ipa_opt_pass_d {
+        c3_pass (gcc::context *ctxt, const char *perf_path)
+            : ipa_opt_pass_d (
+                  pass_data_ipa_reorder,
+                  ctxt,
+                  NULL, /* generate_summary */
+                  NULL, /* write_summary */
+                  NULL, /* read_summary */
+                  NULL, /* write_optimization_summary */
+                  NULL, /* read_optimization_summary */
+                  NULL, /* stmt_fixup */
+                  0,    /* function_transform_todo_flags_start */
+                  NULL, /* function_transform */
+                  NULL /* variable_transform */),
+              perf_script_path (perf_path)
+        {
+        }
 
         /**
          * @brief The execute method
          * @warning do not call it by yourself
          */
-        virtual unsigned int execute (function *) { return c3_reorder (perf_script_path); }
+        virtual unsigned int execute (function *)
+        {
+            return c3_reorder (perf_script_path);
+        }
 
         /**
          * @brief This function is responsible for when the passage
@@ -217,39 +221,41 @@ namespace {
         virtual bool gate (function *);
 
     private:
-        const char* perf_script_path = NULL;
-
+        const char *perf_script_path = NULL;
     };
 
     bool c3_pass::gate (function *)
     {
-        //return flag_profile_reorder_functions && flag_profile_use && flag_wpa;
+        // return flag_profile_reorder_functions && flag_profile_use
+        // && flag_wpa;
         return flag_reorder_functions && flag_wpa;
     }
 
-    void check_arguments (struct plugin_name_args *plugin_info) {
-
+    void check_arguments (struct plugin_name_args *plugin_info)
+    {
         const int argc = plugin_info->argc;
         const struct plugin_argument *argv = plugin_info->argv;
 
         if (argc != 1)
-            throw std::runtime_error ("wrong number of arguments in c3_reorder plugin");
+            throw std::runtime_error (
+                "wrong number of arguments in c3_reorder plugin");
 
-        #define perf_data_length 11
-        if (strncmp (argv [0].key, "perf_script", perf_data_length))
-            throw std::runtime_error ("perf_script argument expected");
+#define perf_data_length 11
+        if (strncmp (argv[0].key, "perf_script", perf_data_length))
+            throw std::runtime_error (
+                "perf_script argument expected");
 
-        const char* perf_script_path = argv [0].value;
+        const char *perf_script_path = argv[0].value;
 
         std::ifstream test_exist (perf_script_path);
         if (!test_exist.is_open ())
-            throw std::runtime_error ("bad path for perf_script file");
+            throw std::runtime_error (
+                "bad path for perf_script file");
 
         test_exist.close ();
-
     }
 
-}
+}  // namespace
 
 /**
  * @brief The main plugin function hooking the desired passage
@@ -258,35 +264,39 @@ namespace {
  * @return error code
  */
 int plugin_init (struct plugin_name_args *plugin_info,
-	        	 struct plugin_gcc_version *version)
+                 struct plugin_gcc_version *version)
 {
-
-    if (!plugin_default_version_check (version, &gcc_version))
-    {
-        std::cerr << "Bad gcc version to compile the plugin" << std::endl;
+    if (!plugin_default_version_check (version, &gcc_version)) {
+        std::cerr << "Bad gcc version to compile the plugin"
+                  << std::endl;
         return 1;
     }
 
-    register_callback(plugin_info->base_name, PLUGIN_INFO, NULL, 
-                      &C3_plugin_info);
+    register_callback (
+        plugin_info->base_name, PLUGIN_INFO, NULL, &C3_plugin_info);
 
-    try { 
-        check_arguments (plugin_info); 
-    } catch (const std::runtime_error& err) {
+    try {
+        check_arguments (plugin_info);
+    }
+    catch (const std::runtime_error &err) {
         std::cerr << "[PLUGIN ERROR]: " << err.what () << std::endl;
         return -1;
     }
 
-
     struct register_pass_info pass_info;
 
-    pass_info.pass = new c3_pass (g, plugin_info->argv [0].value); // "g" is a global gcc::context pointer
-    pass_info.reference_pass_name       = "pure-const";
-    pass_info.ref_pass_instance_number  = 1;
-    pass_info.pos_op                    = PASS_POS_INSERT_AFTER;
+    pass_info.pass = new c3_pass (
+        g,
+        plugin_info->argv[0]
+            .value);  // "g" is a global gcc::context pointer
+    pass_info.reference_pass_name = "pure-const";
+    pass_info.ref_pass_instance_number = 1;
+    pass_info.pos_op = PASS_POS_INSERT_AFTER;
 
-    register_callback (plugin_info->base_name, PLUGIN_PASS_MANAGER_SETUP,
-                       NULL, &pass_info);
+    register_callback (plugin_info->base_name,
+                       PLUGIN_PASS_MANAGER_SETUP,
+                       NULL,
+                       &pass_info);
 
     return 0;
 }
