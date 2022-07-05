@@ -31,8 +31,8 @@
 #include "fibonacci_heap.h"
 
 #include <fstream>
-#include "include/perf_parser.hpp"
-#include "include/funcData.hpp"
+#include "../include/perf_parser.hpp"
+#include "../include/funcData.hpp"
 
 int plugin_is_GPL_compatible; ///<To prove our dedication to free software
 
@@ -123,8 +123,6 @@ namespace {
         }
 
         HFData::FuncInfoTbl perfFuncTbl (lbrParse);
-        for (auto el: perfFuncTbl)
-            std::cerr << "[" << el.first << ", " << el.second << "]" << std::endl;
 
         cgraph_node *node;
         auto_vec<cgraph_node*> gccFunctions;

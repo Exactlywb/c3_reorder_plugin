@@ -11,19 +11,6 @@
 
 namespace HFData {
 
-namespace {
-
-struct pairHash final {
-
-    template<class T1, class T2>
-    std::size_t operator() (const std::pair<T1, T2> &pair) const {
-        return std::hash<T1>() (pair.first) ^ std::hash<T2>() (pair.second);
-    }
-
-};
-
-}
-
 class FuncInfo final {
 
     using callInfo  = std::pair<std::size_t, std::uint64_t>;
@@ -39,29 +26,7 @@ public:
 
     FuncInfo (const std::string& funcName): funcName_ (funcName) {}
 
-    void addCall (FuncInfo* callee, const std::uint64_t offset) {
-
-        auto it = callees_.find (callee);
-        if (it != callees_.end ()) {
-            
-            for (auto el: (*it).second) {
-
-                if (el.second == offset) {
-
-                    el.first++;
-                    return;
-
-                }
-
-            }
-
-            (*it).second.push_back ({1, offset});
-
-        }
-
-        callees_.insert ({callee, {{1, offset}}});
-
-    }
+    void addCall (FuncInfo* callee, const std::uint64_t offset);
 
     std::string getFuncName () const { return funcName_; }
 
@@ -70,37 +35,12 @@ public:
 
 };
 
-namespace {
-
-    void FillTbl (std::unordered_map<std::string, FuncInfo*>& tbl, 
-                  const std::vector<perfParser::LbrSample>& samples)
-    {
-
-        std::set<std::string> funcNames; //!TODO static functions in different files
-        for (auto sample: samples) {
-
-            funcNames.insert (sample.calleeName_);
-            funcNames.insert (sample.callerName_);
-
-        }
-
-        for (auto name: funcNames)
-            tbl.insert ({name, new FuncInfo (name)});
-
-    }
-
-}
-
 class FuncInfoTbl final {
 
     std::unordered_map<std::string, FuncInfo*> tbl_;
 
 public:
-    FuncInfoTbl (const std::vector<perfParser::LbrSample>& samples) {
-
-        FillTbl (tbl_, samples);
-        
-    }
+    FuncInfoTbl (const std::vector<perfParser::LbrSample>& samples);
 
     using tblIt = std::unordered_map<std::string, FuncInfo*>::const_iterator;
 
