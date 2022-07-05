@@ -5,6 +5,7 @@
 #include <string>
 #include <iostream>
 #include <unordered_map>
+#include <set>
 
 #include "perf_parser.hpp"
 
@@ -69,6 +70,27 @@ public:
 
 };
 
+namespace {
+
+    void FillTbl (std::unordered_map<std::string, FuncInfo*>& tbl, 
+                  const std::vector<perfParser::LbrSample>& samples)
+    {
+
+        std::set<std::string> funcNames; //!TODO static functions in different files
+        for (auto sample: samples) {
+
+            funcNames.insert (sample.calleeName_);
+            funcNames.insert (sample.callerName_);
+
+        }
+
+        for (auto name: funcNames)
+            tbl.insert ({name, new FuncInfo (name)});
+
+    }
+
+}
+
 class FuncInfoTbl final {
 
     std::unordered_map<std::string, FuncInfo*> tbl_;
@@ -76,19 +98,21 @@ class FuncInfoTbl final {
 public:
     FuncInfoTbl (const std::vector<perfParser::LbrSample>& samples) {
 
-        for (auto sample: samples) {
-
-            auto it = tbl_.find (sample.callerName_);
-            if (it != tbl_.end ()) {
-
-                // (*it).second->addCall ();
-                return;
-
-            }
-
-        }
+        FillTbl (tbl_, samples);
         
     }
+
+    using tblIt = std::unordered_map<std::string, FuncInfo*>::const_iterator;
+
+    tblIt lookup (const std::string& str) const 
+    {
+        return tbl_.find (str);
+    }
+
+    tblIt begin () const { return tbl_.begin (); }
+    tblIt end () const { return tbl_.end (); }
+
+    std::size_t size () const { return tbl_.size (); }
 
 };
 

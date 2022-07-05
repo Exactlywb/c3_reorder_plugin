@@ -66,7 +66,6 @@ namespace {
         }
 
         perfParser::lbrSampleReParse (lbrParse, lbrSamplesPreRecord);
-
         // for (auto el: lbrParse)
             // std::cerr << "\"" << el.callerName_ << "\" (0x" << std::hex << el.callerOffset_ << ") -> \"" << el.calleeName_ << "\"" << std::endl; 
 
@@ -78,58 +77,25 @@ namespace {
 
     }
 
+
 namespace {
-
-    std::string exec (const char* cmd) {
-        char buffer[128];
-
-        std::string result = "";
-
-        FILE* pipe = popen (cmd, "r");
-
-        if (!pipe) throw std::runtime_error("popen() failed!");
-
-        try {
-
-            while (fgets(buffer, sizeof buffer, pipe) != NULL)
-                result += buffer;
-
-        } catch (...) { //so sorry...
-
-            pclose(pipe);
-            throw;
-
-        }
-
-        pclose(pipe);
-        return result;
-    }
-
-    std::string cpp_filt (const char* asmName) {
-
-        std::string cppCommand = std::string ("c++filt ") 
-                               + std::string (asmName);
-
-        return exec (cppCommand.c_str ());
-
-    }
 
     void CmpOccur (const auto_vec<cgraph_node*>& gccFunctions, const HFData::FuncInfoTbl perfTbl)
     {
 
         int match = 0;
-        // FILE * fp;
-        // fp = fopen ("/home/exactlywb/Desktop/ISP_RAS/c3_reorder_plugin/PASS_WORK.txt", "a+"); //PLEASE, CHANGE IT
 
         for (auto el: gccFunctions) {
             
             std::cerr << el->asm_name () << " -> " << cpp_filt (el->asm_name ()) << std::endl;
-            // fprintf (fp, "%s -> %s", el->asm_name (), cpp_filt (el->asm_name ()));
-            // perfTbl.lookup (cpp_filt (el->asm_name ()));
+            auto it = perfTbl.lookup (cpp_filt (el->asm_name ()));
+            if (it != perfTbl.end ())
+                match++;
 
         }
 
-        std::cerr << "Match percent = " << 100 * (match / gccFunctions.length ()) << "%" << std::endl;
+        std::cerr << "Match = " << match << std::endl;
+        std::cerr << "Match percent = " << 100 * (1.0 * match / perfTbl.size ()) << "%" << std::endl;
 
     }
 
@@ -157,6 +123,8 @@ namespace {
         }
 
         HFData::FuncInfoTbl perfFuncTbl (lbrParse);
+        for (auto el: perfFuncTbl)
+            std::cerr << "[" << el.first << ", " << el.second << "]" << std::endl;
 
         cgraph_node *node;
         auto_vec<cgraph_node*> gccFunctions;

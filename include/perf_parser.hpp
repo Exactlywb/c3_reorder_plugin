@@ -9,6 +9,40 @@
 #include <unordered_map>
 #include <iterator>
 
+    std::string exec (const char* cmd) {
+        char buffer[128];
+
+        std::string result = "";
+
+        FILE* pipe = popen (cmd, "r");
+
+        if (!pipe) throw std::runtime_error("popen() failed!");
+
+        try {
+
+            while (fgets(buffer, sizeof buffer, pipe) != NULL)
+                result += buffer;
+
+        } catch (...) { //so sorry...
+
+            pclose(pipe);
+            throw;
+
+        }
+
+        pclose(pipe);
+        return result;
+    }
+
+    std::string cpp_filt (const char* asmName) {
+
+        std::string cppCommand = std::string ("c++filt ") 
+                               + std::string (asmName);
+
+        return exec (cppCommand.c_str ());
+
+    }
+
 namespace perfParser {
 
 class TraceStream final {
@@ -78,8 +112,8 @@ bool isLBRSample (const std::string& str) {
 
     if (record.size () < 2)
         return false;
-    if (boost::contains (record [1], "0x") == 0
-        && boost::contains (record [1], "/")  == 0)
+    if (boost::contains (record [1], "+0x")
+        && boost::contains (record [1], "/"))
         return true;
 
     return false;
@@ -107,6 +141,7 @@ PerfContent checkPerfScriptType (const char* perf_script_path) {
         if (!traceReader.isAtEOF ()) {
 
             if (isLBRSample (traceReader.getCurrentLine ())) {
+
                 if (count > 0)
                     return PerfContent::LBRStack;
                 else
@@ -165,14 +200,16 @@ struct LbrSample {
 
     LbrSample (const std::string& src, const std::string& dst)
     {
+
         std::vector<std::string> splitted;
         boost::split (splitted, dst, boost::is_any_of ("+"), boost::token_compress_on);
-        calleeName_ = splitted [0];
+        calleeName_ = cpp_filt (splitted [0].c_str ());
 
         boost::split (splitted, src, boost::is_any_of ("+"), boost::token_compress_on);
 
-        callerName_ = splitted [0];
+        callerName_ = cpp_filt (splitted [0].c_str ());
         callerOffset_ = boost::lexical_cast<uint64_t_from_hex> (splitted [1]);
+
     }
 
 };
@@ -183,6 +220,11 @@ void lbrSampleReParse (std::vector<LbrSample>& res,
     auto i = 0;
     auto preSize = pre.size ();
     while (i < preSize) {
+
+        if (pre [i].first == "[unknown]" || pre [i].second == "[unknown]") {
+            ++i;
+            continue;
+        }
 
         LbrSample newLbr (pre [i].first, pre [i].second);
         res.push_back (newLbr);
