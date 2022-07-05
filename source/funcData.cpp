@@ -21,32 +21,12 @@ namespace HFData {
         callees_.insert ({callee, {{offset, 1}}});
     }
 
-    namespace {
-
-        void FillTable (
-            std::unordered_map<std::string, FuncInfo *> &tbl_,
-            const std::vector<perfParser::LbrSample> &samples)
-        {
-            std::set<std::string>
-                funcNames;  //! TODO static functions in different
-                            //! files
-            for (auto sample : samples) {
-                funcNames.insert (sample.calleeName_);
-                funcNames.insert (sample.callerName_);
-            }
-
-            for (auto name : funcNames)
-                tbl_.insert ({name, new FuncInfo (name)});
-        }
-
-    }  // namespace
-
     FuncInfoTbl::FuncInfoTbl (
         const std::vector<perfParser::LbrSample> &samples)
     {
         FillTable (tbl_, samples);
 
-        for (auto sample : samples) {
+        for (const auto& sample : samples) {
             
             auto it = tbl_.find (sample.callerName_);
 

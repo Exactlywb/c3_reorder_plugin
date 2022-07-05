@@ -8,16 +8,7 @@ namespace perfParser {
     // leading "0x" and the '/' exist.
     bool isLBRSample (const std::string &str)
     {
-        // std::vector<std::string> record;
-
-        // boost::split (
-            // record, boost::trim_copy (str), boost::is_any_of (" "));
-
-        if (boost::contains (str, "+0x") &&
-            boost::contains (str, "/"))
-            return true;
-
-        return false;
+        return boost::contains (str, "+0x") && boost::contains (str, "/");
     }
 
     PerfContent checkPerfScriptType (const char *perf_script_path)

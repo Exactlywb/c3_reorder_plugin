@@ -63,6 +63,22 @@ namespace HFData {
 
         std::size_t size () const { return tbl_.size (); }
 
+        static void FillTable (
+            std::unordered_map<std::string, FuncInfo *> &tbl,
+            const std::vector<perfParser::LbrSample> &samples)
+        {
+            std::set<std::string>
+                funcNames;  //! TODO static functions in different
+                            //! files
+            for (auto sample : samples) {
+                funcNames.insert (sample.calleeName_);
+                funcNames.insert (sample.callerName_);
+            }
+
+            for (auto name : funcNames)
+                tbl.insert ({name, new FuncInfo (name)});
+        }
+
         void textDump () const;
     };
 
