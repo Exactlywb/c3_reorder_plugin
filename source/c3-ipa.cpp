@@ -85,7 +85,7 @@ namespace {
         {
             int match = 0;
 
-            for (auto el : gccFunctions) {
+            for (const auto& el : gccFunctions) {
                 
                 auto it = perfTbl.lookup (cpp_filt (el->asm_name ()));
                 if (it != perfTbl.end ())

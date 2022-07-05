@@ -32,10 +32,8 @@ namespace HFData {
 
             if (it != tbl_.end ()) {
 
-                auto callee = tbl_.find (sample.calleeName_);
-                if (callee == tbl_.end ()) throw std::runtime_error ("Bad table fill in FillTable () function");
-
-                (*it).second->addCall ((*callee).second, sample.callerOffset_);
+                auto key = tbl_.at (sample.calleeName_);
+                (*it).second->addCall (key, sample.callerOffset_);
 
             } else
                 throw std::runtime_error ("Bad table fill in FillTable () function");
@@ -46,14 +44,14 @@ namespace HFData {
     void FuncInfoTbl::textDump () const
     {
 
-        for (auto el: tbl_) {
+        for (const auto& el: tbl_) {
 
             std::cerr << "(" << el.first << ", " << el.second << ") --> ";
-            for (auto call: el.second->getCalleesSlow ())
+            for (const auto& call: el.second->getCalleesSlow ())
             {
                 
                 std::cerr << call.first->getFuncName () << "(" << call.first << ") : ";
-                for (auto callInfo: call.second)
+                for (const auto& callInfo: call.second)
                     std::cerr << "0x" << std::hex << callInfo.first << ", " << std::dec << callInfo.second << " | ";
 
             }

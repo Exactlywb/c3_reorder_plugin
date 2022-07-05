@@ -70,12 +70,12 @@ namespace HFData {
             std::set<std::string>
                 funcNames;  //! TODO static functions in different
                             //! files
-            for (auto sample : samples) {
+            for (const auto& sample : samples) {
                 funcNames.insert (sample.calleeName_);
                 funcNames.insert (sample.callerName_);
             }
 
-            for (auto name : funcNames)
+            for (const auto& name : funcNames)
                 tbl.insert ({name, new FuncInfo (name)});
         }
 
