@@ -7,31 +7,81 @@ namespace HFData {
     {
         auto it = callees_.find (callee);
         if (it != callees_.end ()) {
-            for (auto el : (*it).second) {
-                if (el.second == offset) {
-                    el.first++;
-                    return;
-                }
+            auto offsetIt = (*it).second.find (offset);
+            if (offsetIt != (*it).second.end ()) {
+                (*offsetIt).second++;
+                return;
             }
 
-            (*it).second.push_back ({1, offset});
+            (*it).second.insert ({offset, 1});
+
+            return;
         }
 
-        callees_.insert ({callee, {{1, offset}}});
+        callees_.insert ({callee, {{offset, 1}}});
     }
+
+    namespace {
+
+        void FillTable (
+            std::unordered_map<std::string, FuncInfo *> &tbl_,
+            const std::vector<perfParser::LbrSample> &samples)
+        {
+            std::set<std::string>
+                funcNames;  //! TODO static functions in different
+                            //! files
+            for (auto sample : samples) {
+                funcNames.insert (sample.calleeName_);
+                funcNames.insert (sample.callerName_);
+            }
+
+            for (auto name : funcNames)
+                tbl_.insert ({name, new FuncInfo (name)});
+        }
+
+    }  // namespace
 
     FuncInfoTbl::FuncInfoTbl (
         const std::vector<perfParser::LbrSample> &samples)
     {
-        std::set<std::string>
-            funcNames;  //! TODO static functions in different files
+        FillTable (tbl_, samples);
+
         for (auto sample : samples) {
-            funcNames.insert (sample.calleeName_);
-            funcNames.insert (sample.callerName_);
+            
+            auto it = tbl_.find (sample.callerName_);
+
+            if (it != tbl_.end ()) {
+
+                auto callee = tbl_.find (sample.calleeName_);
+                if (callee == tbl_.end ()) throw std::runtime_error ("Bad table fill in FillTable () function");
+
+                (*it).second->addCall ((*callee).second, sample.callerOffset_);
+
+            } else
+                throw std::runtime_error ("Bad table fill in FillTable () function");
+
+        }
+    }
+
+    void FuncInfoTbl::textDump () const
+    {
+
+        for (auto el: tbl_) {
+
+            std::cerr << "(" << el.first << ", " << el.second << ") --> ";
+            for (auto call: el.second->getCalleesSlow ())
+            {
+                
+                std::cerr << call.first->getFuncName () << "(" << call.first << ") : ";
+                for (auto callInfo: call.second)
+                    std::cerr << "0x" << std::hex << callInfo.first << ", " << std::dec << callInfo.second << " | ";
+
+            }
+
+            std::cerr << "$" << std::endl;
+
         }
 
-        for (auto name : funcNames)
-            tbl_.insert ({name, new FuncInfo (name)});
     }
 
 }  // namespace HFData

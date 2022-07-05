@@ -70,10 +70,7 @@ namespace {
         }
 
         perfParser::lbrSampleReParse (lbrParse, lbrSamplesPreRecord);
-        // for (auto el: lbrParse)
-        // std::cerr << "\"" << el.callerName_ << "\" (0x" << std::hex
-        // << el.callerOffset_
-        // << ") -> \"" << el.calleeName_ << "\"" << std::endl;
+
     }
 
     void parse_hybrid_perf_data (const char *perf_script_path)
@@ -89,8 +86,7 @@ namespace {
             int match = 0;
 
             for (auto el : gccFunctions) {
-                std::cerr << el->asm_name () << " -> "
-                          << cpp_filt (el->asm_name ()) << std::endl;
+                
                 auto it = perfTbl.lookup (cpp_filt (el->asm_name ()));
                 if (it != perfTbl.end ())
                     match++;
@@ -141,6 +137,7 @@ namespace {
         }
 
         CmpOccur (gccFunctions, perfFuncTbl);
+        perfFuncTbl.textDump ();
 
         return 0;
     }

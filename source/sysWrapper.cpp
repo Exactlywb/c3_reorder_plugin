@@ -30,5 +30,5 @@ std::string cpp_filt (const char *asmName)
     std::string cppCommand =
         std::string ("c++filt ") + std::string (asmName);
 
-    return exec (cppCommand.c_str ());
+    return boost::trim_copy (exec (cppCommand.c_str ()));
 }

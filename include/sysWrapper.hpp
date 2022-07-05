@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <string>
+#include <boost/algorithm/string.hpp>
 
 std::string exec (const char *cmd);
 std::string cpp_filt (const char *asmName);

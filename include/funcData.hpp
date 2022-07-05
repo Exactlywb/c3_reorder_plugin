@@ -12,8 +12,9 @@
 namespace HFData {
 
     class FuncInfo final {
-        using callInfo = std::pair<std::size_t, std::uint64_t>;
-        using calls = std::vector<callInfo>;  //! TODO change it
+        using calls =
+            std::unordered_map<std::uint64_t,
+                               std::size_t>;  // offset + occurance
         std::unordered_map<FuncInfo *, calls>
             callees_;  // our + 0xoffset -> another
                        // (std::size_t is occurance)
@@ -25,6 +26,10 @@ namespace HFData {
     public:
         FuncInfo (const std::string &funcName) : funcName_ (funcName)
         {
+        }
+
+        std::unordered_map<FuncInfo *, calls> getCalleesSlow () const {
+            return callees_;
         }
 
         void addCall (FuncInfo *callee, const std::uint64_t offset);
@@ -57,6 +62,8 @@ namespace HFData {
         tblIt end () const { return tbl_.end (); }
 
         std::size_t size () const { return tbl_.size (); }
+
+        void textDump () const;
     };
 
 }  // namespace HFData

@@ -8,15 +8,13 @@ namespace perfParser {
     // leading "0x" and the '/' exist.
     bool isLBRSample (const std::string &str)
     {
-        std::vector<std::string> record;
+        // std::vector<std::string> record;
 
-        boost::split (
-            record, boost::trim_copy (str), boost::is_any_of (" "));
+        // boost::split (
+            // record, boost::trim_copy (str), boost::is_any_of (" "));
 
-        if (record.size () < 2)
-            return false;
-        if (boost::contains (record[1], "+0x") &&
-            boost::contains (record[1], "/"))
+        if (boost::contains (str, "+0x") &&
+            boost::contains (str, "/"))
             return true;
 
         return false;
@@ -57,7 +55,7 @@ namespace perfParser {
         return PerfContent::Unknown;
     }
 
-    namespace {
+namespace {
 
         std::string parseFuncNameTillSlash (const std::string &str,
                                             std::size_t *i)
@@ -75,7 +73,7 @@ namespace perfParser {
             return res;
         }
 
-        class uint64_t_from_hex {  // For use with boost::lexical_cast
+        class uint64_t_from_hex {  // To use with boost::lexical_cast
             std::uint64_t value;
 
         public:
@@ -92,7 +90,7 @@ namespace perfParser {
             }
         };
 
-    }  // namespace
+}
 
     LbrSample::LbrSample (const std::string &src,
                           const std::string &dst)
