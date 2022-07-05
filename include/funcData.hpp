@@ -10,29 +10,59 @@
 
 namespace HFData {
 
-using callInfo = std::pair<FuncInfo*, std::uint64_t>;
+namespace {
+
+struct pairHash final {
+
+    template<class T1, class T2>
+    std::size_t operator() (const std::pair<T1, T2> &pair) const {
+        return std::hash<T1>() (pair.first) ^ std::hash<T2>() (pair.second);
+    }
+
+};
+
+}
 
 class FuncInfo final {
 
+    using callInfo  = std::pair<std::size_t, std::uint64_t>;
+    using calls     = std::vector<callInfo>; //!TODO change it
+    std::unordered_map<FuncInfo*, calls> callees_;  // our + 0xoffset -> another
+                                                    // (std::size_t is occurance)
 
-    std::vector<callInfo> callers_; // another + 0xoffset -> our
-    std::vector<callInfo> callees_; // our     + 0xoffset -> another
+    std::string funcName_;
 
     int funcSize_ = -1; //!TODO
 
-protected:
-    void addCaller (const callInfo& sample) {
-        callers_.push_back (sample);
-    }
-
 public:
 
-    void addCall (const callInfo& sample) {
+    FuncInfo (const std::string& funcName): funcName_ (funcName) {}
 
-        callees_.push_back (sample);
-        sample.first->addCaller (sample);
+    void addCall (FuncInfo* callee, const std::uint64_t offset) {
+
+        auto it = callees_.find (callee);
+        if (it != callees_.end ()) {
+            
+            for (auto el: (*it).second) {
+
+                if (el.second == offset) {
+
+                    el.first++;
+                    return;
+
+                }
+
+            }
+
+            (*it).second.push_back ({1, offset});
+
+        }
+
+        callees_.insert ({callee, {{1, offset}}});
 
     }
+
+    std::string getFuncName () const { return funcName_; }
 
     void setFuncSize (const int funcSize) { funcSize_ = funcSize; }
     int getFuncSize () const { return funcSize_; }
@@ -43,7 +73,22 @@ class FuncInfoTbl final {
 
     std::unordered_map<std::string, FuncInfo*> tbl_;
 
-//!TODO
+public:
+    FuncInfoTbl (const std::vector<perfParser::LbrSample>& samples) {
+
+        for (auto sample: samples) {
+
+            auto it = tbl_.find (sample.callerName_);
+            if (it != tbl_.end ()) {
+
+                // (*it).second->addCall ();
+                return;
+
+            }
+
+        }
+        
+    }
 
 };
 

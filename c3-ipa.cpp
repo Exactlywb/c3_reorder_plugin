@@ -48,7 +48,7 @@ namespace {
         return strcmp(a->name(), b->name());
     }
 
-    void parse_lbr_perf_data (std::vector<perfParser::LbrSample> lbrParse, const char* perf_script_path) {
+    void parse_lbr_perf_data (std::vector<perfParser::LbrSample>& lbrParse, const char* perf_script_path) {
 
         perfParser::TraceStream traceReader (perf_script_path);
         std::vector<std::pair<std::string, std::string>> lbrSamplesPreRecord;
@@ -78,6 +78,63 @@ namespace {
 
     }
 
+namespace {
+
+    std::string exec (const char* cmd) {
+        char buffer[128];
+
+        std::string result = "";
+
+        FILE* pipe = popen (cmd, "r");
+
+        if (!pipe) throw std::runtime_error("popen() failed!");
+
+        try {
+
+            while (fgets(buffer, sizeof buffer, pipe) != NULL)
+                result += buffer;
+
+        } catch (...) { //so sorry...
+
+            pclose(pipe);
+            throw;
+
+        }
+
+        pclose(pipe);
+        return result;
+    }
+
+    std::string cpp_filt (const char* asmName) {
+
+        std::string cppCommand = std::string ("c++filt ") 
+                               + std::string (asmName);
+
+        return exec (cppCommand.c_str ());
+
+    }
+
+    void CmpOccur (const auto_vec<cgraph_node*>& gccFunctions, const HFData::FuncInfoTbl perfTbl)
+    {
+
+        int match = 0;
+        // FILE * fp;
+        // fp = fopen ("/home/exactlywb/Desktop/ISP_RAS/c3_reorder_plugin/PASS_WORK.txt", "a+"); //PLEASE, CHANGE IT
+
+        for (auto el: gccFunctions) {
+            
+            std::cerr << el->asm_name () << " -> " << cpp_filt (el->asm_name ()) << std::endl;
+            // fprintf (fp, "%s -> %s", el->asm_name (), cpp_filt (el->asm_name ()));
+            // perfTbl.lookup (cpp_filt (el->asm_name ()));
+
+        }
+
+        std::cerr << "Match percent = " << 100 * (match / gccFunctions.length ()) << "%" << std::endl;
+
+    }
+
+}
+
     /**
      * @brief c3 reorder itself
      * @return error code
@@ -85,11 +142,11 @@ namespace {
     static unsigned int c3_reorder (const char* perf_script_path) {
 
         perfParser::PerfContent type =  perfParser::checkPerfScriptType (perf_script_path);
+        std::vector<perfParser::LbrSample> lbrParse;
         switch (type) {
             case perfParser::PerfContent::Unknown:
                 throw std::runtime_error ("Unknown perf script file format");
             case perfParser::PerfContent::LBR: {
-                std::vector<perfParser::LbrSample> lbrParse;
                 parse_lbr_perf_data (lbrParse, perf_script_path);
                 break;
             }
@@ -97,8 +154,23 @@ namespace {
                 parse_hybrid_perf_data (perf_script_path);
                 break;
             default: break;
-            
         }
+
+        HFData::FuncInfoTbl perfFuncTbl (lbrParse);
+
+        cgraph_node *node;
+        auto_vec<cgraph_node*> gccFunctions;
+        FOR_EACH_DEFINED_FUNCTION (node) {
+
+            if (node == nullptr)
+                continue;
+            
+            if (!node->alias && !node->global.inlined_to)
+                gccFunctions.safe_push (node);
+
+        }
+
+        CmpOccur (gccFunctions, perfFuncTbl);
 
         return 0;
 
