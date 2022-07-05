@@ -72,8 +72,8 @@ namespace {
         perfParser::lbrSampleReParse (lbrParse, lbrSamplesPreRecord);
         // for (auto el: lbrParse)
         // std::cerr << "\"" << el.callerName_ << "\" (0x" << std::hex
-        // << el.callerOffset_ << ") ->
-        // \"" << el.calleeName_ << "\"" << std::endl;
+        // << el.callerOffset_
+        // << ") -> \"" << el.calleeName_ << "\"" << std::endl;
     }
 
     void parse_hybrid_perf_data (const char *perf_script_path)
